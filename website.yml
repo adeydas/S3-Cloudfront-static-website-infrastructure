@@ -39,6 +39,7 @@ Metadata:
       Parameters:
         - RepositoryName
         - RepositoryDescription
+        - BuildProjectName
 Parameters:
   Domain:
     Description: 'The domain of your website.'
@@ -74,6 +75,10 @@ Parameters:
     Description: 'Description of the repository'
     Type: String
     Default: 'My website'
+  BuildProjectName:
+    Description: 'Name of the build project'
+    Type: String
+    Default: 'my-website-build'
 
 Conditions:
   ShouldCreateCert: !Equals
@@ -275,6 +280,39 @@ Resources:
             Ref: CodeRepositorySNS
           Events:
             - all
+
+  CodeBuildRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - 'codebuild.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess'
+      - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+      - 'arn:aws:iam::aws:policy/CloudFrontFullAccess'
+
+  CodeBuild:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: !Ref BuildProjectName
+      Description: !Ref RepositoryDescription
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: no_artifacts
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ruby:2.5.3-1.7.0
+      Source:
+        Location: !GetAtt CodeRepository.CloneUrlHttp
+        Type: CODECOMMIT
+      TimeoutInMinutes: 10
 
 Outputs:
   BucketName:
