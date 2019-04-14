@@ -284,7 +284,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/ruby:2.5.3-1.7.0
+        Image: aws/codebuild/ruby:2.5.3-1.7.0 # Change to a different image if not using Jekyll
       Source:
         Location: !GetAtt CodeRepository.CloneUrlHttp
         Type: CODECOMMIT
