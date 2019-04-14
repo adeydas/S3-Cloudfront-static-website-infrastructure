@@ -1,5 +1,5 @@
-# Infrastructure code for static website with S3 and CloudFormation
-This repository contains infrastructure code for creating static websites using S3 and Cloudfront. It :
+# Infrastructure code for static website with S3 and Cloudfront
+This repository contains CloudFormation infrastructure code for creating static websites using S3 and Cloudfront. It :
 
 1. Creates a CodeCommit repository to hold code for the static website.
 2. Creates a CodeBuild project to continuously deploy on git push.
