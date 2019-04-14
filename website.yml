@@ -215,6 +215,65 @@ Resources:
     Properties:
       FunctionName: !Ref LambdaFunction
 
+  # Lambda to trigger code builds on code push
+  CodeBuildLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      - 'arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess'
+      - 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'
+
+  CodeBuildLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        # If you change the ZipFile, rename the logical id CBLambdaVersionV1 to trigger a new version creation!
+        ZipFile: !Sub |
+          import boto3
+          import os
+
+          def entrypoint(event, context):
+            print('Starting a new build ...')
+            cb = boto3.client('codebuild')
+            build = {
+              'projectName': os.environ['project_name'],
+            }
+            cb.start_build(**build)
+            print('Successfully launched a new CodeBuild project build!')
+      Handler: 'index.entrypoint'
+      MemorySize: 128
+      Role: !GetAtt 'CodeBuildLambdaRole.Arn'
+      Runtime: 'python3.6'
+      Timeout: 5
+      Environment:
+        Variables:
+          'project_name': !Ref BuildProjectName
+  LambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CodeBuildLambdaFunction}'
+      RetentionInDays: !Ref LogsRetentionInDays
+  CBLambdaVersionV1:
+    Type: 'AWS::Lambda::Version'
+    Properties:
+      FunctionName: !Ref CodeBuildLambdaFunction
+
+  CodeBuildLambdaFunctionEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt CodeRepositorySQS.Arn
+      FunctionName: !GetAtt CodeBuildLambdaFunction.Arn
 
   # Set up A Record via Route 53
   Route53Record:
@@ -263,19 +322,19 @@ Resources:
   CodeRepositorySQS:
     Type: 'AWS::SQS::Queue'
     Properties:
-      QueueName: 'Website-code-repo-events'
+      QueueName: 'website-code-repo-events-1'
 
-  # Create SNS topics for CodeCommit events
+  # Create SNS topic for CodeCommit events
   CodeRepositorySNS:
     Type: 'AWS::SNS::Topic'
     Properties:
-      TopicName: 'Website-code-repo-events'
+      TopicName: 'website-code-repo-events-1'
       Subscription:
         - Endpoint: !GetAtt CodeRepositorySQS.Arn
           Protocol: "sqs"
 
   # SNS to SQS communication policy
-  SNSToSQSPolicy:
+  CodeRepositorySNSToSQSPolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues: [!Ref 'CodeRepositorySQS']
@@ -321,6 +380,8 @@ Resources:
       - 'arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess'
       - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
       - 'arn:aws:iam::aws:policy/CloudFrontFullAccess'
+      - 'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess'
+      - 'arn:aws:iam::aws:policy/AWSCodeCommitPowerUser'
 
   # Create the build infrastructure
   CodeBuild:
@@ -329,6 +390,7 @@ Resources:
       Name: !Ref BuildProjectName
       Description: !Ref RepositoryDescription
       ServiceRole: !GetAtt CodeBuildRole.Arn
+      BadgeEnabled: true
       Artifacts:
         Type: no_artifacts
       Environment:
