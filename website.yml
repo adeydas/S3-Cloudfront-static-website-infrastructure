@@ -69,7 +69,7 @@ Parameters:
   RepositoryName:
     Description: 'Repository where the code for the website lives'
     Type: String
-    Default: !Ref Domain
+    Default: 'test.domain.com'
   RepositoryDescription:
     Description: 'Description of the repository'
     Type: String
@@ -259,11 +259,22 @@ Resources:
               - !Sub 'arn:aws:s3:::${S3Bucket}'
               - !Sub 'arn:aws:s3:::${S3Bucket}/*'
 
+  CodeRepositorySNS:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: !Sub sns-${RepositoryName}
+
   CodeRepository:
     Type: 'AWS::CodeCommit::Repository'
     Properties:
       RepositoryName: !Ref RepositoryName
       RepositoryDescription: !Ref RepositoryDescription
+      Triggers:
+        - Name: 'RepositoryTrigger'
+          DestinationArn:
+            Ref: CodeRepositorySNS
+          Events:
+            - all
 
 Outputs:
   BucketName:
@@ -275,6 +286,9 @@ Outputs:
   DistributionId:
     Description: 'CloudFront Distribution ID'
     Value: !Ref CloudFrontDistribution
+  CodeRepository:
+    Description: 'Code repository for website'
+    Value: !Ref CodeRepository
   URL:
     Description: 'URL of your website'
     Value: !If
