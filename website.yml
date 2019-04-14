@@ -255,12 +255,6 @@ Resources:
     Properties:
       RepositoryName: !Ref RepositoryName
       RepositoryDescription: !Ref RepositoryDescription
-      Triggers:
-        - Name: 'RepositoryTrigger'
-          DestinationArn:
-            Ref: CodeRepositorySNS
-          Events:
-            - all
 
   # Create the build infrastructure
   CodeBuildRole:
