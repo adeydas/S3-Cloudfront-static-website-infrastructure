@@ -227,6 +227,16 @@ Resources:
         HostedZoneId: Z2FDTNDATAQYW2 # This Zone ID is used for any CloudFront Distribution
         DNSName: !GetAtt 'CloudFrontDistribution.DomainName'
 
+  Route53AliasRecord:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Sub 'www.${Domain}'
+      Type: CNAME
+      TTL: '900'
+      ResourceRecords:
+        - !Ref Domain
+
   # Set up TLS Cert
   Cert:
     Condition: ShouldCreateCert
