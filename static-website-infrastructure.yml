@@ -321,14 +321,11 @@ Resources:
   # Create SQS queue for CodeCommit events
   CodeRepositorySQS:
     Type: 'AWS::SQS::Queue'
-    Properties:
-      QueueName: 'website-code-repo-events-1'
 
   # Create SNS topic for CodeCommit events
   CodeRepositorySNS:
     Type: 'AWS::SNS::Topic'
     Properties:
-      TopicName: 'website-code-repo-events-1'
       Subscription:
         - Endpoint: !GetAtt CodeRepositorySQS.Arn
           Protocol: "sqs"
