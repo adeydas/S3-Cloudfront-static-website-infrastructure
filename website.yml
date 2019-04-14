@@ -259,14 +259,53 @@ Resources:
               - !Sub 'arn:aws:s3:::${S3Bucket}'
               - !Sub 'arn:aws:s3:::${S3Bucket}/*'
 
+  # Create SQS queue for CodeCommit events
+  CodeRepositorySQS:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: 'Website-code-repo-events'
+
+  # Create SNS topics for CodeCommit events
+  CodeRepositorySNS:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: 'Website-code-repo-events'
+      Subscription:
+        - Endpoint: !GetAtt CodeRepositorySQS.Arn
+          Protocol: "sqs"
+
+  # SNS to SQS communication policy
+  SNSToSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref 'CodeRepositorySQS']
+      PolicyDocument:
+        Version: '2008-10-17'
+        Id: PublicationPolicy
+        Statement:
+        - Sid: Allow-SNS-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: ['sqs:SendMessage']
+          Resource: !GetAtt [CodeRepositorySQS, Arn]
+          Condition:
+            ArnEquals:
+              aws:SourceArn: !Ref 'CodeRepositorySNS'
+
   # Create a git repository for the website code
   CodeRepository:
     Type: 'AWS::CodeCommit::Repository'
     Properties:
       RepositoryName: !Ref RepositoryName
       RepositoryDescription: !Ref RepositoryDescription
+      Triggers:
+        - Name: SNSTrigger
+          DestinationArn: !Ref CodeRepositorySNS
+          Events: 
+            - all
 
-  # Create the build infrastructure
+  # Create the role for the build infrastructure
   CodeBuildRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -283,6 +322,7 @@ Resources:
       - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
       - 'arn:aws:iam::aws:policy/CloudFrontFullAccess'
 
+  # Create the build infrastructure
   CodeBuild:
     Type: 'AWS::CodeBuild::Project'
     Properties:
