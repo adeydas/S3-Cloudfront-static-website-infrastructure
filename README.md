@@ -1,0 +1,1 @@
+# Infrastructure code for static website with S3 and CloudFormation
